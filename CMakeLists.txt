@@ -10,7 +10,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -march=native -O3 -pthread")
 set(pcl_conversion_DIR "/opt/ros/kinetic/share/pcl_conversions/cmake")
 find_package(pcl_conversion)
 find_package(Pangolin REQUIRED)
-
 find_package(Boost REQUIRED COMPONENTS thread system date_time)
 include_directories(${Boost_INCLUDE_DIRS})
 
