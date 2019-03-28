@@ -183,13 +183,14 @@ void pango_init()
 
 void pcl_init()
 {
-  ROS_INFO("Enter pcl_init");
+  ROS_INFO("Enter PCL thread\n");
   pcl::visualization::CloudViewer viewer("Simple lidar view");
   
   while(!viewer.wasStopped())
   {
     viewer.showCloud(temp_cloud);
-    boost::this_thread::sleep (boost::posix_time::microseconds (1000));
+    viewer.showCloud(rs_cloud);
+    boost::this_thread::sleep (boost::posix_time::microseconds (100));
   }
 }
 
@@ -236,14 +237,14 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     // Initialize the ROS Node "roscpp_pcl_example"
     ros::init (argc, argv, "roscpp_pcl_example");
     ros::NodeHandle nh;
-    // std::thread pcl_thd(pcl_init);
+    std::thread pcl_thd(pcl_init);
     std::thread pango_thd(pango_init);
     ROS_INFO_STREAM("Hello from ROS Node: " << ros::this_node::getName());
     
     ros::Subscriber sub = nh.subscribe("/pandar_points", 1, cloud_cb);
     ros::Subscriber sub_rs = nh.subscribe("/cloud_node_left/rslidar_points_left", 1, cloud_rs);
     ros::spin();
-    // pcl_thd.join();
+    pcl_thd.join();
     pango_thd.join();
     return 0;
     
