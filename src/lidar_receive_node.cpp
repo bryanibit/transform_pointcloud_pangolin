@@ -20,6 +20,7 @@
   #include <pcl_ros/transforms.h>
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr rs_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
   Eigen::Vector3f trans_vec_A{0,0,0};
   Eigen::Translation<float,3> translation_A(trans_vec_A);
@@ -63,12 +64,12 @@ void getCurrentTime()
     gettimeofday(&timestart, NULL);
     // double timeofsec = static_cast<double>(timestart.tv_sec + static_cast<double>(timestart.tv_usec)/1000000);
     auto timeofsec = static_cast<int>(timestart.tv_sec);
-    ROS_INFO("time is %d", timeofsec);
+    ROS_INFO("time is %d s", timeofsec);
 }
 
 void pango_init()
 {
-    ROS_INFO("Enter subthread\n");
+    ROS_INFO("Enter pangolin thread\n");
     // Load configuration data
     pangolin::ParseVarsFile("/home/ugv-yu/catkin_ws/src/lidar_receive/app.cfg");
 
@@ -103,6 +104,9 @@ void pango_init()
     pangolin::Var<double> doubleX("ui.angleX",0,0,180.0);
     pangolin::Var<double> doubleY("ui.angleY",0,0,180.0);
     pangolin::Var<double> doubleZ("ui.angleZ",0,0,180.0);
+    pangolin::Var<double> translateX("ui.translateX",0,-10.0,10.0);
+    pangolin::Var<double> translateY("ui.translateY",0,-10.0,10.0);
+    pangolin::Var<double> translateZ("ui.translateZ",0,-10.0,10.0);
     // pangolin::Var<int> an_int("ui.An_Int",2,0,180);
     // pangolin::Var<double> a_double_log("ui.Log_scale var",3,1,1E4, true);
     // pangolin::Var<bool> a_checkbox("ui.A_Checkbox",false,true);
@@ -115,7 +119,7 @@ void pango_init()
     // pangolin::Var<bool> record_cube("ui.Record_Cube",false,false);
 
     // std::function objects can be used for Var's too. These work great with C++11 closures.
-    pangolin::Var<std::function<void(void)> > reset("ui.Reset", getCurrentTime);
+    pangolin::Var<std::function<void(void)> > reset("ui.Time", getCurrentTime);
 
     // Demonstration of how we can register a keyboard hook to alter a Var
     pangolin::RegisterKeyPressCallback(pangolin::PANGO_CTRL + 'x', pangolin::SetVarFunctor<double>("ui.angleX", 180));
@@ -131,7 +135,10 @@ void pango_init()
 
         if( pangolin::Pushed(a_button) )
           {
-            std::cout << "Angle changed!" << std::endl;
+            std::cout << "Angle or translation changed!" << std::endl;
+            translation_A.x() = translateX;
+            translation_A.y() = translateY;
+            translation_A.z() = translateZ;
             rotation_B = static_cast<Eigen::Quaternionf> (Eigen::AngleAxisf(doubleX, Eigen::Vector3f::UnitX())) ;
             rotation_C = static_cast<Eigen::Quaternionf> (Eigen::AngleAxisf(doubleY, Eigen::Vector3f::UnitY())) ;
             rotation_D = static_cast<Eigen::Quaternionf> (Eigen::AngleAxisf(doubleZ, Eigen::Vector3f::UnitZ()));
@@ -166,6 +173,9 @@ void pango_init()
         PangoCloud pgcloud(temp_cloud.get());
         pgcloud.drawPoints();
 
+        PangoCloud pgcloudrs(rs_cloud.get());
+        pgcloudrs.drawPoints();
+
         pangolin::FinishFrame();
     }
 }
@@ -198,7 +208,26 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     // ROS_INFO("time is %d", timeofsec);
     // if(timeofsec % 10 == 0)
     // {
-    pcl::transformPointCloud (*temp_cloud, *temp_cloud, combined);
+    // pcl::transformPointCloud (*temp_cloud, *temp_cloud, combined);
+    // }
+  }
+
+  void cloud_rs(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
+  {
+    pcl::PCLPointCloud2 pcl_pc2;
+    pcl_conversions::toPCL(*cloud_msg,pcl_pc2);
+    pcl::fromPCLPointCloud2(pcl_pc2,*rs_cloud);
+    if(rs_cloud->empty())
+    {
+      ROS_INFO("converted cloud is empty");
+    }
+    gettimeofday(&timestart, NULL);
+    // double timeofsec = static_cast<double>(timestart.tv_sec + static_cast<double>(timestart.tv_usec)/1000000);
+    auto timeofsec = static_cast<int>(timestart.tv_sec);
+    // ROS_INFO("time is %d", timeofsec);
+    // if(timeofsec % 10 == 0)
+    // {
+    pcl::transformPointCloud (*rs_cloud, *rs_cloud, combined);
     // }
   }
 
@@ -212,6 +241,7 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
     ROS_INFO_STREAM("Hello from ROS Node: " << ros::this_node::getName());
     
     ros::Subscriber sub = nh.subscribe("/pandar_points", 1, cloud_cb);
+    ros::Subscriber sub_rs = nh.subscribe("/cloud_node_left/rslidar_points_left", 1, cloud_rs);
     ros::spin();
     // pcl_thd.join();
     pango_thd.join();
