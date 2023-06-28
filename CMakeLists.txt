@@ -1,23 +1,28 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.16)
 project(lidar_receive)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -march=native -O3 -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -march=native -O3 -pthread")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-set(pcl_conversion_DIR "/opt/ros/kinetic/share/pcl_conversions/cmake")
-find_package(pcl_conversion)
+set(pcl_conversions_DIR "/opt/ros/noetic/share/pcl_conversions/cmake/")
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/opt/ros/noetic/share/pcl_conversions/cmake/")
+find_package(pcl_conversions REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread system date_time)
 include_directories(${Boost_INCLUDE_DIRS})
 
+find_package(PCL REQUIRED COMPONENTS common visualization io)
 find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   roscpp
   sensor_msgs
 )
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -156,7 +161,10 @@ add_executable(${PROJECT_NAME}_node src/lidar_receive_node.cpp)
  target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${Pangolin_LIBRARIES}
+   ${pcl_conversions_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${PCL_COMMON_LIBRARIES} ${PCL_IO_LIBRARIES}
+  ${PCL_VISUALIZATION_LIBRARIES}
  )
 
 #############
